@@ -62,3 +62,91 @@ select customer_id, amount,
        avg(amount) over (partition by customer_id order by amount rows between 1 preceding and 1 following)
 from payment
 order by customer_id, amount;
+
+create table small_rental
+(
+    id           number primary key,
+    rental_date  date   not null,
+    inventory_id number not null references INVENTORY
+);
+
+drop function COPY_RENTAL;
+create or replace function copy_rental(id in number)
+    return rental%rowtype
+    is
+begin
+    declare
+        tmp_rent rental%rowtype;
+    begin
+        select *
+        into tmp_rent
+        from RENTAL
+        where RENTAL_ID = id;
+        return tmp_rent;
+    end;
+end;
+/
+
+declare
+    res rental%rowtype;
+begin
+    res := copy_rental(169);
+    dbms_output.PUT_LINE(res.RENTAL_DATE);
+end;
+
+begin
+    for rental in (select * from RENTAL)
+        loop
+            insert into small_rental (id, rental_date, inventory_id)
+            values (rental.RENTAL_ID, rental.RENTAL_DATE, rental.INVENTORY_ID);
+        end loop;
+    commit;
+end;
+/
+
+-- huge performance issues
+declare
+    cursor cur(stid number)
+        is
+        select *
+        from RENTAL
+        where STAFF_ID = stid;
+    nr rental%rowtype;
+begin
+    open cur(2);
+    loop
+        fetch cur into nr;
+        exit when cur%notfound;
+        insert into small_rental (id, rental_date, inventory_id)
+        values (nr.RENTAL_ID, nr.RENTAL_DATE, nr.INVENTORY_ID);
+    end loop;
+    close cur;
+end;
+/
+
+declare
+    type rental_cursor is ref cursor return rental%rowtype;
+    cur         rental_cursor;
+    placeholder rental%rowtype;
+begin
+    open cur for select *
+                 from RENTAL
+                 where STAFF_ID = 1;
+    loop
+        fetch cur into placeholder;
+        exit when cur%notfound;
+        dbms_output.PUT_LINE('Processing id ' || placeholder.RENTAL_ID);
+    end loop;
+    close cur;
+end;
+/
+
+declare
+    cursor cur
+        is
+        select *
+        from small_rental
+            for update;
+begin
+    null;
+end;
