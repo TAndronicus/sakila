@@ -150,3 +150,22 @@ declare
 begin
     null;
 end;
+
+select rn, CUSTOMER_ID, a, d, s
+from (
+         select PAYMENT_ID, P.CUSTOMER_ID, AMOUNT, ceil(coalesce(R.RETURN_DATE, current_date) - R.RENTAL_DATE) DURATION, 0 SALES
+         from PAYMENT P
+                  inner join RENTAL R on R.RENTAL_ID = P.RENTAL_ID
+     ) P_AGG
+    model
+        partition by (CUSTOMER_ID)
+        dimension by (row_number() over (
+        partition by CUSTOMER_ID
+        order by PAYMENT_ID
+        ) as rn)
+        measures (AMOUNT a, DURATION d, SALES s)
+        rules (
+        s[1] = a[1] * d[1],
+        s[rn > 1] = s[cv() - 1] + a[cv()] * d[cv()]
+        )
+order by CUSTOMER_ID, rn;
