@@ -169,3 +169,28 @@ from (
         s[rn > 1] = s[cv() - 1] + a[cv()] * d[cv()]
         )
 order by CUSTOMER_ID, rn;
+
+SELECT sess.process, sess.status, sess.username, sess.schemaname, sql.sql_text
+FROM v$session sess,
+     v$sql sql
+WHERE sql.sql_id(+) = sess.sql_id
+  AND sess.type = 'USER';
+
+select *
+from V$DB_OBJECT_CACHE;
+select *
+from V$EXECUTION;
+select *
+from V$LOCK;
+select *
+from V$LOCKED_OBJECT;
+select *
+from V$PARAMETER;
+select *
+from V$PROCESS;
+select *
+from V$SQL;
+select *
+from V$SQL_SHARED_MEMORY;
+select *
+from V$TRANSACTION;
